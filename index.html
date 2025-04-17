@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Travel PNR Check</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 100%;
+            padding: 15px;
+            line-height: 1.5;
+        }
+        .card {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            font-weight: bold;
+            border: none;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h2>Travel PNR Check</h2>
+    
+    <div class="card">
+        <h3>Check Booking</h3>
+        <input type="text" id="pnrInput" placeholder="Enter PNR Number">
+        <button onclick="checkPNR()">Check Status</button>
+        <div id="result" class="hidden"></div>
+    </div>
+    
+    <div class="card">
+        <h3>Add New Booking (Admin)</h3>
+        <input type="text" id="newPnr" placeholder="PNR Number">
+        <input type="text" id="customerName" placeholder="Customer Name">
+        <input type="text" id="flightNumber" placeholder="Flight Number">
+        <button onclick="addBooking()">Save Booking</button>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        // Paste your Firebase config here (from Step 3)
+      const firebaseConfig = {
+  apiKey: "AIzaSyBDtoOIFmBmjBoCnHMg8gM-jp2fIevQVpM",
+  authDomain: "travelease-afaa7.firebaseapp.com",
+  projectId: "travelease-afaa7",
+  storageBucket: "travelease-afaa7.firebasestorage.app",
+  messagingSenderId: "358018723936",
+  appId: "1:358018723936:web:5514fa435b651bbbd31305"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        // Check PNR function
+        async function checkPNR() {
+            const pnr = document.getElementById('pnrInput').value.trim();
+            const resultDiv = document.getElementById('result');
+            
+            if (!pnr) {
+                showResult('Please enter a PNR number', 'error');
+                return;
+            }
+            
+            try {
+                const snapshot = await db.collection('bookings')
+                    .where('pnr', '==', pnr)
+                    .get();
+                
+                if (snapshot.empty) {
+                    showResult('No booking found for this PNR', 'error');
+                } else {
+                    const booking = snapshot.docs[0].data();
+                    showResult(`
+                        <h4>Booking Found</h4>
+                        <p><strong>PNR:</strong> ${booking.pnr}</p>
+                        <p><strong>Passenger:</strong> ${booking.customerName}</p>
+                        <p><strong>Flight:</strong> ${booking.flightNumber || 'Not specified'}</p>
+                        <p><strong>Status:</strong> ${booking.status || 'Confirmed'}</p>
+                    `, 'success');
+                }
+            } catch (error) {
+                showResult('Error checking PNR. Please try again.', 'error');
+                console.error(error);
+            }
+        }
+        
+        // Add booking function
+        async function addBooking() {
+            const pnr = document.getElementById('newPnr').value.trim();
+            const name = document.getElementById('customerName').value.trim();
+            const flight = document.getElementById('flightNumber').value.trim();
+            
+            if (!pnr || !name) {
+                showMessage('PNR and Customer Name are required', 'error');
+                return;
+            }
+            
+            try {
+                await db.collection('bookings').add({
+                    pnr: pnr,
+                    customerName: name,
+                    flightNumber: flight,
+                    status: "Confirmed",
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showMessage('Booking saved successfully!', 'success');
+                // Clear form
+                document.getElementById('newPnr').value = '';
+                document.getElementById('customerName').value = '';
+                document.getElementById('flightNumber').value = '';
+            } catch (error) {
+                showMessage('Error saving booking', 'error');
+                console.error(error);
+            }
+        }
+        
+        // Helper functions
+        function showResult(content, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = content;
+            resultDiv.className = type; // 'success' or 'error'
+            resultDiv.classList.remove('hidden');
+        }
+        
+        function showMessage(msg, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.innerHTML = msg;
+            msgDiv.className = type;
+            setTimeout(() => msgDiv.innerHTML = '', 3000);
+        }
+    </script>
+</body>
+</html>
